@@ -1,0 +1,175 @@
+<?php
+
+/*
+* Implements hook_menu().
+*/
+function mymodule_permission() {
+  return array(
+    'mycustomform access' => array(
+      'title' => t('MyForm Access'), 
+      'description' => t('Provide access to your form.'),
+    ),
+    'mycustompage access' => array(
+      'title' => t('MyPage Access'), 
+      'description' => t('Provide access to your page.'),
+    ),
+  );
+}
+
+/*
+* Implements hook_menu().
+*/
+function mymodule_menu() {
+  $items = array();
+  $items['mymodule/mypage'] = array(
+    'title' => t('My Page'),
+    'page callback' => 'mypage_content',
+    'access callback' => 'user_access',
+    'access arguments' => array('mycustompage access'),
+  );
+  $items['mymodule/myform'] = array(
+    'title' => t('My Form'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('my_custom_form'),
+    'access callback' => 'user_access',
+    'access arguments' => array('mycustomform access'),
+  );
+  return $items;
+}
+
+
+function mypage_content() {
+  $output = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi sed sapien diam, id elementum eros. Fusce at auctor tortor.";
+  return $output;
+}
+
+// My Custom Form
+function my_custom_form() { 
+  $form = array();
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+    '#size' => 60,
+    '#maxlength' => 128,
+    '#required' => TRUE,
+    '#weight' => 0,
+  );
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email'),
+    '#size' => 60,
+    '#maxlength' => 128,
+    '#required' => TRUE,
+    '#weight' => 1,
+  );
+  $form ['city'] = array(
+        '#type' => 'select',
+        '#title' => t('City'),
+        '#options' => array(
+          '' => t('Choose City'),
+          'Pune' => 'Pune',
+          'Mumbai' => 'Mumbai',
+        ),
+        '#required' => TRUE,
+        '#weight' => 2,
+   );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+    '#weight' => 3,
+  );
+  return $form;
+}
+
+// Validation function of my_custom_form
+function my_custom_form_validate($form, &$form_state) {
+  $email = $form_state['values']['email'];
+  if(!preg_match("/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/",$email)){
+    form_set_error('email',t('Please enter valid email.'));
+  }
+}
+
+// Submit function of my_custom_form
+function my_custom_form_submit($form, &$form_state) {
+  $name = $form_state['values']['name'];
+  $email = $form_state['values']['email'];
+  $city = $form_state['values']['city'];
+  drupal_set_message(t('Your name is %name.', array('%name' => $name)));
+  drupal_set_message(t('Your email is %email.', array('%email' => $email)));
+  drupal_set_message(t('Your city is %city.', array('%city' => $city)));
+}
+
+/*
+* Implements hook_form_alter().
+*/
+function mymodule_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'my_custom_form':
+      $form['address'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Address'),
+        '#cols' => 60,
+        '#rows' => 5,
+        '#weight' => 2,
+      );
+      $form['#validate'][] = 'my_form_custom_validate';
+      $form['#submit'][] = 'my_form_custom_submit';
+      break;
+  } 
+}
+
+function my_form_custom_validate($form, &$form_state) {
+  // custom validation script goes here.....
+}
+
+function my_form_custom_submit($form, &$form_state) {
+  // custom submit script goes here.....
+}
+
+/*
+* Implements hook_node_insert().
+*/
+function mymodule_node_insert($node) {
+  if($node->type == 'article') {
+    variable_set('node_custom_value_'.$node->nid, 'Inserted Custom Value');
+  }
+}
+
+/*
+* Implements hook_node_insert().
+*/
+function mymodule_node_load($nodes, $types) {
+  foreach($types as $type) {
+    if($type == 'article'){
+      foreach($nodes as $node) {
+        $node->custom_value = variable_get('node_custom_value_'.$node->nid, '');
+      }
+    }
+  } 
+}
+
+/*
+* Implements hook_node_view().
+*/
+function mymodule_node_view($node, $view_mode, $langcode) {
+  if($node->type == 'article'){
+    $node->content['custom_value'] = array(
+      '#markup' => $node->custom_value, 
+      '#weight' => -10, 
+    );
+  }
+}
+
+/*
+* Implements hook_node_update().
+*/
+function mymodule_node_update($node) {
+  $node->custom_value = variable_set('node_custom_value_'.$node->nid, 'Updated Custom Value');
+}
+
+/*
+* Implements hook_node_delete().
+*/
+function mymodule_node_delete($node) {
+  variable_del('node_custom_value_'.$node->nid);
+}
